@@ -34,23 +34,37 @@ LICENSE:
 #define ARD2990_EEPROM_ERR      2
 #define ARD2990_LTC2499_U2_ERR  4
 #define ARD2990_FAIL            8
+#define ARD2990_INVALID_CONFIG 16
 
 #define ARD2990_EEP_ADDR_00 0x50
 #define ARD2990_EEP_ADDR_0Z 0x51
 #define ARD2990_EEP_ADDR_Z0 0x52
 #define ARD2990_EEP_ADDR_ZZ 0x53
 
+#define ARD2990_PART_U1     0x00
+#define ARD2990_PART_U2     0x01
+
+
 #define ARD2990_LTC2990_SINGLE_ENDED         0x01
 #define ARD2990_LTC2990_DIFFERENTIAL         0x02
 #define ARD2990_LTC2990_TEMPERATURE          0x03
 
+#define ARD2990_LTC2990_CELSUIS              0x00
+#define ARD2990_LTC2990_KELVIN               0x80
 
+#define ARD2990_LTC2990_CONTINUOUS           0x00
+#define ARD2990_LTC2990_SINGLE               0x40
+
+#define ARD2990_CHANNEL_A                    0x01
 #define ARD2990_CHANNEL_A1                   0x01
 #define ARD2990_CHANNEL_A2                   0x02
+#define ARD2990_CHANNEL_B                    0x03
 #define ARD2990_CHANNEL_B1                   0x03
 #define ARD2990_CHANNEL_B2                   0x04
+#define ARD2990_CHANNEL_C                    0x05
 #define ARD2990_CHANNEL_C1                   0x05
 #define ARD2990_CHANNEL_C2                   0x06
+#define ARD2990_CHANNEL_D                    0x07
 #define ARD2990_CHANNEL_D1                   0x07
 #define ARD2990_CHANNEL_D2                   0x08
 #define ARD2990_CHANNEL_U1_TEMP              0x09
@@ -61,41 +75,27 @@ LICENSE:
 #define ARD2990_J11_OPEN                     0x01
 #define ARD2990_J11_SHORTED                  0x00
 
-byte ltc2990ConfigSet(uint8_t whichLtc2990)
-{
-	
+#define ARD2990_TEMP_K        0x00
+#define ARD2990_TEMP_F        0x01
+#define ARD2990_TEMP_C        0x02
 
-}
+#define LTC2990_REGISTER_STATUS              0x00
+#define LTC2990_REGISTER_CONFIG              0x01
+#define LTC2990_REGISTER_TRIGGER             0x02
+#define LTC2990_REGISTER_TINT_MSB            0x04
+#define LTC2990_REGISTER_TINT_LSB            0x05
+#define LTC2990_REGISTER_V1_MSB              0x06
+#define LTC2990_REGISTER_V1_LSB              0x07
+#define LTC2990_REGISTER_V2_MSB              0x08
+#define LTC2990_REGISTER_V2_LSB              0x09
+#define LTC2990_REGISTER_V3_MSB              0x0A
+#define LTC2990_REGISTER_V3_LSB              0x0B
+#define LTC2990_REGISTER_V4_MSB              0x0C
+#define LTC2990_REGISTER_V4_LSB              0x0D
+#define LTC2990_REGISTER_VCC_MSB             0x0E
+#define LTC2990_REGISTER_VCC_LSB             0x0F
 
-
-
-int channelRead()
-{
-	
-
-}
-
-
-byte channelSetup(byte channel, byte configuration)
-{
-	uint8_t retval, saveConfiguration;
-	if (channel >= sizeof(channelConfig))
-		return(ARD2990_FAIL);
-
-	if (configuration > 0x07) // it's only three bits - anything greater is an error		
-		return(ARD2990_FAIL);		
-
-	saveConfiguration = channelConfig[channel];
-	channelConfig[channel] = configuration;
-	retval = ltc2990ConfigSend(channel / 2);
-
-	if (ARD2990_SUCCESS != retval)
-		channelConfig[channel] = saveConfiguration;
-
-	return(retval);
-}
-
-
+#define ARD_LTC2990_VOLTAGE_ERR              0x80000000L
 
 
 #define ARD2990_EEPROM_ADDR_EUI48  0xFA
@@ -104,18 +104,21 @@ class Ard2990
 {
 	public:
 		Ard2990();
-		byte begin(byte ltc2499Address, byte eepromAddress);
+		byte begin(byte j11State);
 		const char* eui48Get();
 		byte eepromRead(int address, byte defaultOnError);
 		byte eepromWrite(int address, byte value, byte blocking);
+		byte ltc2990ConfigSet(byte allChanConfig, byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig);
+		
 	private:
 		uint8_t init_status;
 		uint8_t i2cAddr_ltc2990_u1;
 		uint8_t i2cAddr_ltc2990_u2;
 		uint8_t i2cAddr_eeprom;
 		uint8_t channelConfig[4];
-		uint8_t currentLtc2990U2Config;
+		uint8_t globalConfig;
 		char eui48[ARD2990_EUI48_STRLN+1];
+		byte ltc2990SendControlByte(byte partNum);
 };
 
 #endif // ARD2990_H
