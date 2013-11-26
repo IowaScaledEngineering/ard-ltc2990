@@ -105,10 +105,14 @@ class Ard2990
 	public:
 		Ard2990();
 		byte begin(byte j11State);
+		byte begin(byte j11State, byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig);
 		const char* eui48Get();
 		byte eepromRead(int address, byte defaultOnError);
 		byte eepromWrite(int address, byte value, byte blocking);
-		byte ltc2990ConfigSet(byte allChanConfig, byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig);
+		byte ltc2990ConfigSet(byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig);
+		uint16_t ltc2990ReadRaw(byte channel);
+		float ltc2990ReadTemperature(byte channel, byte temperatureUnits);
+		long ltc2990ReadMicrovolts(byte channel);
 		
 	private:
 		uint8_t init_status;

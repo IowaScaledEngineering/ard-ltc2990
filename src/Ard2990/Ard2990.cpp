@@ -27,9 +27,9 @@ LICENSE:
 
 Ard2990::Ard2990()
 {
-	init_status = ARD2499_EEPROM_ERR;
-	i2cAddr_ltc2990_1 = 0;
-	i2cAddr_ltc2990_2 = 0;	
+	init_status = ARD2990_EEPROM_ERR;
+	i2cAddr_ltc2990_u1 = 0;
+	i2cAddr_ltc2990_u2 = 0;	
 	i2cAddr_eeprom = 0;
 	strcpy(eui48, "Unknown");
 }
@@ -39,9 +39,11 @@ const char* Ard2990::eui48Get()
 	return(eui48);
 }
 
-byte ltc2990SendControlByte(byte partNum)
+byte Ard2990::ltc2990SendControlByte(byte partNum)
 {
-	byte retval = 0, mode = 0;
+	byte mode=0, i=0;
+	if (partNum)
+		i = 1;
 	
 	// Horrible logic tree for configuration byte
 	if (channelConfig[i+0] == ARD2990_LTC2990_SINGLE_ENDED && channelConfig[i+1] == ARD2990_LTC2990_SINGLE_ENDED)
@@ -58,7 +60,7 @@ byte ltc2990SendControlByte(byte partNum)
 		mode = 0x02;
 	else if (channelConfig[i+0] == ARD2990_LTC2990_DIFFERENTIAL && channelConfig[i+1] == ARD2990_LTC2990_TEMPERATURE)
 		mode = 0x01;
-	else if (channelConfig[i+0] == ARD2990_LTC2990_SINGLE_ENDED && chan[i+1] == ARD2990_LTC2990_TEMPERATURE)
+	else if (channelConfig[i+0] == ARD2990_LTC2990_SINGLE_ENDED && channelConfig[i+1] == ARD2990_LTC2990_TEMPERATURE)
 		mode = 0x00;
 	else
 		// There's not a mode to express what you've done...
@@ -67,7 +69,7 @@ byte ltc2990SendControlByte(byte partNum)
 	// globalConfig carries along continuous/single and celsius/kelvin
 	mode |= globalConfig;
 
-	Wire.beginTransmission((0 == partNum)?i2cAddr_ltc2990_1:i2cAddr_ltc2990_2);
+	Wire.beginTransmission((0 == partNum)?i2cAddr_ltc2990_u1:i2cAddr_ltc2990_u2);
 	Wire.write(LTC2990_REGISTER_CONFIG);
 	Wire.write(mode);
 	if (0 != Wire.endTransmission(true))
@@ -76,10 +78,10 @@ byte ltc2990SendControlByte(byte partNum)
 	return ARD2990_SUCCESS;
 }
 
-byte ltc2990ConfigSet(byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig)
+byte Ard2990::ltc2990ConfigSet(byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig)
 {
 	byte retval = 0;
-	byte i2cAddr = 0;
+	byte i;
 
 	if (ARD2990_SUCCESS != init_status)
 		return ARD2990_FAIL;
@@ -161,7 +163,6 @@ uint16_t Ard2990::ltc2990ReadRaw(byte channel)
 
 	switch(channel)
 	{
-		case ARD2990_CHANNEL_A:
 		case ARD2990_CHANNEL_A1:
 			i2cAddr = i2cAddr_ltc2990_u1;
 			i2cRegister = LTC2990_REGISTER_V1_MSB;
@@ -172,7 +173,6 @@ uint16_t Ard2990::ltc2990ReadRaw(byte channel)
 			i2cRegister = LTC2990_REGISTER_V2_MSB;
 			break;
 
-		case ARD2990_CHANNEL_B:
 		case ARD2990_CHANNEL_B1:
 			i2cAddr = i2cAddr_ltc2990_u1;
 			i2cRegister = LTC2990_REGISTER_V3_MSB;
@@ -193,7 +193,6 @@ uint16_t Ard2990::ltc2990ReadRaw(byte channel)
 			i2cRegister = LTC2990_REGISTER_VCC_MSB;
 			break;
 
-		case ARD2990_CHANNEL_C:
 		case ARD2990_CHANNEL_C1:		
 			i2cAddr = i2cAddr_ltc2990_u2;
 			i2cRegister = LTC2990_REGISTER_V1_MSB;
@@ -204,7 +203,6 @@ uint16_t Ard2990::ltc2990ReadRaw(byte channel)
 			i2cRegister = LTC2990_REGISTER_V2_MSB;
 			break;
 
-		case ARD2990_CHANNEL_D:
 		case ARD2990_CHANNEL_D1:
 			i2cAddr = i2cAddr_ltc2990_u2;
 			i2cRegister = LTC2990_REGISTER_V3_MSB;
@@ -260,24 +258,20 @@ long Ard2990::ltc2990ReadMicrovolts(byte channel)
 	// First, test to make sure that channel is configured for temperature, return 0 if not
 	switch(channel)
 	{
-		case ARD2990_CHANNEL_A:
 		case ARD2990_CHANNEL_A1:
 		case ARD2990_CHANNEL_A2:
 			chanConfig = channelConfig[0];
 			break;
-		case ARD2990_CHANNEL_B:
 		case ARD2990_CHANNEL_B1:
 		case ARD2990_CHANNEL_B2:
 			chanConfig = channelConfig[1];
 			break;
 
-		case ARD2990_CHANNEL_C:
 		case ARD2990_CHANNEL_C1:
 		case ARD2990_CHANNEL_C2:
 			chanConfig = channelConfig[2];
 			break;
 
-		case ARD2990_CHANNEL_D:
 		case ARD2990_CHANNEL_D1:
 		case ARD2990_CHANNEL_D2:
 			chanConfig = channelConfig[3];
@@ -318,27 +312,23 @@ float Ard2990::ltc2990ReadTemperature(byte channel, byte temperatureUnits)
 	// First, test to make sure that channel is configured for temperature, return 0 if not
 	switch(channel)
 	{
-		case ARD2990_CHANNEL_A:
 		case ARD2990_CHANNEL_A1:
 		case ARD2990_CHANNEL_A2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[0])
 				return 0.0;
 			break;
-		case ARD2990_CHANNEL_B:
 		case ARD2990_CHANNEL_B1:
 		case ARD2990_CHANNEL_B2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[1])
 				return 0.0;
 			break;
 
-		case ARD2990_CHANNEL_C:
 		case ARD2990_CHANNEL_C1:
 		case ARD2990_CHANNEL_C2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[2])
 				return 0.0;
 			break;
 
-		case ARD2990_CHANNEL_D:
 		case ARD2990_CHANNEL_D1:
 		case ARD2990_CHANNEL_D2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[3])
@@ -365,6 +355,16 @@ float Ard2990::ltc2990ReadTemperature(byte channel, byte temperatureUnits)
 			return(((tempK - 273.15) * 9.0)  / 5.0 + 32.0);
 	}
 	return(0);
+}
+
+byte Ard2990::begin(byte j11State, byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig)
+{
+	byte retval = begin(j11State);
+	if (ARD2990_SUCCESS != retval)
+		return retval;
+	
+
+	return ltc2990ConfigSet(chanAConfig, chanBConfig, chanCConfig, chanDConfig);
 }
 
 byte Ard2990::begin(byte j11State)
@@ -444,11 +444,11 @@ byte Ard2990::eepromWrite(int address, byte value, byte blocking=1)
 	uint8_t waitLoop = 10;
 	byte retval = 0;
 	if (0 == i2cAddr_eeprom)
-		return(ARD2499_EEPROM_ERR);
+		return(ARD2990_EEPROM_ERR);
 
 	// Our writable address range only goes to 0xFF
 	if (address > 0x7F)
-		return(ARD2499_EEPROM_ERR);
+		return(ARD2990_EEPROM_ERR);
 		
 	Wire.beginTransmission(i2cAddr_eeprom);
 	Wire.write(address);
@@ -457,7 +457,7 @@ byte Ard2990::eepromWrite(int address, byte value, byte blocking=1)
 	// Anything but zero means we couldn't write to the LTC2499
 	if (0 != retval)
 	{
-		return(ARD2499_EEPROM_ERR);
+		return(ARD2990_EEPROM_ERR);
 	}	
 	
 	if (0 != blocking)
@@ -470,9 +470,9 @@ byte Ard2990::eepromWrite(int address, byte value, byte blocking=1)
 				return(0);
 			_delay_ms(1);
 		}
-		return(ARD2499_EEPROM_ERR);
+		return(ARD2990_EEPROM_ERR);
 	}
-	return(ARD2499_SUCCESS);
+	return(ARD2990_SUCCESS);
 }
 
 
