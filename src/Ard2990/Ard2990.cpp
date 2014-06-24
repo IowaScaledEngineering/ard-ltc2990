@@ -43,7 +43,7 @@ byte Ard2990::ltc2990SendControlByte(byte partNum)
 {
 	byte mode=0, i=0;
 	if (partNum)
-		i = 1;
+		i = 2;
 	
 	// Horrible logic tree for configuration byte
 	if (channelConfig[i+0] == ARD2990_LTC2990_SINGLE_ENDED && channelConfig[i+1] == ARD2990_LTC2990_SINGLE_ENDED)
@@ -115,13 +115,12 @@ byte Ard2990::ltc2990ConfigSet(byte chanAConfig, byte chanBConfig, byte chanCCon
 		{
 			return ARD2990_INVALID_CONFIG;
 		}
-
-		if (ARD2990_SUCCESS != (retval = ltc2990SendControlByte(ARD2990_PART_U1)))
-			return retval;
-		if (ARD2990_SUCCESS != (retval = ltc2990SendControlByte(ARD2990_PART_U2)))
-			return retval;
-
 	}
+
+	if (ARD2990_SUCCESS != (retval = ltc2990SendControlByte(ARD2990_PART_U1)))
+		return retval;
+	if (ARD2990_SUCCESS != (retval = ltc2990SendControlByte(ARD2990_PART_U2)))
+		return retval;
 
 	return ARD2990_SUCCESS;
 }
