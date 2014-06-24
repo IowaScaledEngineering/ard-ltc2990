@@ -66,6 +66,9 @@ byte Ard2990::ltc2990SendControlByte(byte partNum)
 		// There's not a mode to express what you've done...
 		return ARD2990_INVALID_CONFIG;
 
+	// Select all measurements
+	mode |= 0x18;
+
 	// globalConfig carries along continuous/single and celsius/kelvin
 	mode |= globalConfig;
 
@@ -280,6 +283,8 @@ long Ard2990::ltc2990ReadMicrovolts(byte channel)
 			return ARD_LTC2990_VOLTAGE_ERR;
 	}
 
+	// FIXME: Need to trigger a conversion
+
 	uint16_t rawRead = ltc2990ReadRaw(channel) & 0x7FFF;
 
 	switch(chanConfig)
@@ -341,6 +346,15 @@ float Ard2990::ltc2990ReadTemperature(byte channel, byte temperatureUnits)
 		default:
 			return 0.0;
 	}
+	
+	// Trigger a conversion
+	// FIXME: Should trigger a conversion be its own function, which the user must then follow with a read...() call?
+	Wire.beginTransmission(0x77);  // LTC2990 Global Address
+	Wire.write(LTC2990_REGISTER_TRIGGER);
+	Wire.write(0x00);
+	Wire.endTransmission(true);
+
+	_delay_ms(200);  // Wait until max conversion time plus some margin (FIXME: read busy byte?)
 	
 	float tempK = (float)(ltc2990ReadRaw(channel) & 0x1FFF) * 0.0625;
 
