@@ -5,7 +5,7 @@ File:     $Id: $
 License:  GNU General Public License v3
 
 LICENSE:
-    Copyright (C) 2013 Nathan D. Holmes & Michael D. Petersen
+    Copyright (C) 2014 Nathan D. Holmes & Michael D. Petersen
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,12 +100,17 @@ LICENSE:
 
 #define ARD2990_EEPROM_ADDR_EUI48  0xFA
 
+#define ARD2990_TEMP_NOT_CONFIGURED   -300.0
+#define ARD2990_TEMP_SENSOR_SHORTED   -301.0
+#define ARD2990_TEMP_SENSOR_OPEN      -302.0
+
 class Ard2990
 {
 	public:
 		Ard2990();
 		byte begin(byte j11State);
 		byte begin(byte j11State, byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig);
+		bool isInitialized();
 		const char* eui48Get();
 		byte eepromRead(int address, byte defaultOnError);
 		byte eepromWrite(int address, byte value, byte blocking);

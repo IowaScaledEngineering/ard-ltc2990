@@ -5,7 +5,7 @@ File:     $Id: $
 License:  GNU General Public License v3
 
 LICENSE:
-    Copyright (C) 2013 Nathan D. Holmes & Michael D. Petersen
+    Copyright (C) 2014 Nathan D. Holmes & Michael D. Petersen
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,8 +22,35 @@ LICENSE:
 #include <stdlib.h>
 #include <string.h>
 #include <util/delay.h>
-
 #include "Ard2990.h"
+
+
+#define ARD2990_CHANNEL_A1                   0x01
+#define ARD2990_CHANNEL_A2                   0x02
+#define ARD2990_CHANNEL_B1                   0x03
+#define ARD2990_CHANNEL_B2                   0x04
+#define ARD2990_CHANNEL_C1                   0x05
+#define ARD2990_CHANNEL_C2                   0x06
+#define ARD2990_CHANNEL_D1                   0x07
+#define ARD2990_CHANNEL_D2                   0x08
+#define ARD2990_CHANNEL_U1_TEMP              0x09
+#define ARD2990_CHANNEL_U1_VSUPPLY           0x0A
+#define ARD2990_CHANNEL_U2_TEMP              0x0B
+#define ARD2990_CHANNEL_U2_VSUPPLY           0x0C
+
+
+#define LTC2990_REGISTER_TINT_MSB            0x04
+#define LTC2990_REGISTER_TINT_LSB            0x05
+#define LTC2990_REGISTER_V1_MSB              0x06
+#define LTC2990_REGISTER_V1_LSB              0x07
+#define LTC2990_REGISTER_V2_MSB              0x08
+#define LTC2990_REGISTER_V2_LSB              0x09
+#define LTC2990_REGISTER_V3_MSB              0x0A
+#define LTC2990_REGISTER_V3_LSB              0x0B
+#define LTC2990_REGISTER_V4_MSB              0x0C
+#define LTC2990_REGISTER_V4_LSB              0x0D
+#define LTC2990_REGISTER_VCC_MSB             0x0E
+#define LTC2990_REGISTER_VCC_LSB             0x0F
 
 Ard2990::Ard2990()
 {
@@ -38,6 +65,15 @@ const char* Ard2990::eui48Get()
 {
 	return(eui48);
 }
+
+bool Ard2990::isInitialized()
+{
+	if (init_status == ARD2990_SUCCESS)
+		return true;
+
+	return false;
+}
+
 
 byte Ard2990::ltc2990SendControlByte(byte partNum)
 {
@@ -75,6 +111,13 @@ byte Ard2990::ltc2990SendControlByte(byte partNum)
 	Wire.beginTransmission((0 == partNum)?i2cAddr_ltc2990_u1:i2cAddr_ltc2990_u2);
 	Wire.write(LTC2990_REGISTER_CONFIG);
 	Wire.write(mode);
+	if (0 != Wire.endTransmission(true))
+		return ARD2990_FAIL;
+		
+	// Send a one off conversion just to get the ball rolling
+	Wire.beginTransmission((0 == partNum)?i2cAddr_ltc2990_u1:i2cAddr_ltc2990_u2);  
+	Wire.write(LTC2990_REGISTER_TRIGGER);
+	Wire.write(0x00);
 	if (0 != Wire.endTransmission(true))
 		return ARD2990_FAIL;
 
@@ -127,34 +170,6 @@ byte Ard2990::ltc2990ConfigSet(byte chanAConfig, byte chanBConfig, byte chanCCon
 
 	return ARD2990_SUCCESS;
 }
-
-#define ARD2990_CHANNEL_A1                   0x01
-#define ARD2990_CHANNEL_A2                   0x02
-#define ARD2990_CHANNEL_B1                   0x03
-#define ARD2990_CHANNEL_B2                   0x04
-#define ARD2990_CHANNEL_C1                   0x05
-#define ARD2990_CHANNEL_C2                   0x06
-#define ARD2990_CHANNEL_D1                   0x07
-#define ARD2990_CHANNEL_D2                   0x08
-#define ARD2990_CHANNEL_U1_TEMP              0x09
-#define ARD2990_CHANNEL_U1_VSUPPLY           0x0A
-#define ARD2990_CHANNEL_U2_TEMP              0x0B
-#define ARD2990_CHANNEL_U2_VSUPPLY           0x0C
-
-
-#define LTC2990_REGISTER_TINT_MSB            0x04
-#define LTC2990_REGISTER_TINT_LSB            0x05
-#define LTC2990_REGISTER_V1_MSB              0x06
-#define LTC2990_REGISTER_V1_LSB              0x07
-#define LTC2990_REGISTER_V2_MSB              0x08
-#define LTC2990_REGISTER_V2_LSB              0x09
-#define LTC2990_REGISTER_V3_MSB              0x0A
-#define LTC2990_REGISTER_V3_LSB              0x0B
-#define LTC2990_REGISTER_V4_MSB              0x0C
-#define LTC2990_REGISTER_V4_LSB              0x0D
-#define LTC2990_REGISTER_VCC_MSB             0x0E
-#define LTC2990_REGISTER_VCC_LSB             0x0F
-
 
 uint16_t Ard2990::ltc2990ReadRaw(byte channel)
 {
@@ -279,30 +294,33 @@ long Ard2990::ltc2990ReadMicrovolts(byte channel)
 			chanConfig = channelConfig[3];
 			break;
 
+		case ARD2990_CHANNEL_U1_VSUPPLY:
+		case ARD2990_CHANNEL_U2_VSUPPLY:
+			chanConfig = 0;
+			break;
+
 		default:
 			return ARD_LTC2990_VOLTAGE_ERR;
 	}
 
-	// FIXME: Need to trigger a conversion
-
 	uint16_t rawRead = ltc2990ReadRaw(channel) & 0x7FFF;
-
 	switch(chanConfig)
 	{
 		case ARD2990_LTC2990_SINGLE_ENDED:
 			if (rawRead & 0x4000)
 				rawRead = ~rawRead + 1;
-			return (((((long)rawRead * 100) * 30518L) + 0) / 100);
+			return (((long)rawRead * 30518L) / 100L);
 			
 		case ARD2990_LTC2990_DIFFERENTIAL:
 			if (rawRead & 0x4000)
 				rawRead = ~rawRead + 1;
-			return (((((long)rawRead * 100) * 1942L) + 0) / 100);
+			return (((long)rawRead * 1942L) / 100L);
 
 		case 0:
-			// 0 means it's an internal voltage, so we have to add to it
+			// 0 means it's an internal voltage, so we have to add 2.5V to it
+			// Also, the sign bit is meaningless
 			rawRead &= 0x3FFF;
-			return 2500000L + (((((long)rawRead * 100) * 30518L) + 0) / 100);
+			return 2500000L + (((long)rawRead * 30518L) / 100L);
 
 		default:
 			return ARD_LTC2990_VOLTAGE_ERR;
@@ -319,24 +337,24 @@ float Ard2990::ltc2990ReadTemperature(byte channel, byte temperatureUnits)
 		case ARD2990_CHANNEL_A1:
 		case ARD2990_CHANNEL_A2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[0])
-				return 0.0;
+				return ARD2990_TEMP_NOT_CONFIGURED;
 			break;
 		case ARD2990_CHANNEL_B1:
 		case ARD2990_CHANNEL_B2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[1])
-				return 0.0;
+				return ARD2990_TEMP_NOT_CONFIGURED;
 			break;
 
 		case ARD2990_CHANNEL_C1:
 		case ARD2990_CHANNEL_C2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[2])
-				return 0.0;
+				return ARD2990_TEMP_NOT_CONFIGURED;
 			break;
 
 		case ARD2990_CHANNEL_D1:
 		case ARD2990_CHANNEL_D2:
 			if (ARD2990_LTC2990_TEMPERATURE != channelConfig[3])
-				return 0.0;
+				return ARD2990_TEMP_NOT_CONFIGURED;
 			break;
 
 		case ARD2990_CHANNEL_U1_TEMP:
@@ -344,19 +362,17 @@ float Ard2990::ltc2990ReadTemperature(byte channel, byte temperatureUnits)
 			break;
 		
 		default:
-			return 0.0;
+			return ARD2990_TEMP_NOT_CONFIGURED;
 	}
 	
-	// Trigger a conversion
-	// FIXME: Should trigger a conversion be its own function, which the user must then follow with a read...() call?
-	Wire.beginTransmission(0x77);  // LTC2990 Global Address
-	Wire.write(LTC2990_REGISTER_TRIGGER);
-	Wire.write(0x00);
-	Wire.endTransmission(true);
-
-	_delay_ms(200);  // Wait until max conversion time plus some margin (FIXME: read busy byte?)
+	uint16_t rawValue = ltc2990ReadRaw(channel);
 	
-	float tempK = (float)(ltc2990ReadRaw(channel) & 0x1FFF) * 0.0625;
+	if (rawValue & 0x4000)
+		return (ARD2990_TEMP_SENSOR_SHORTED);
+	else if (rawValue & 0x2000)
+		return (ARD2990_TEMP_SENSOR_OPEN);
+	
+	float tempK = (float)(rawValue & 0x1FFF) * 0.0625;
 
 	switch(temperatureUnits)
 	{
@@ -367,7 +383,7 @@ float Ard2990::ltc2990ReadTemperature(byte channel, byte temperatureUnits)
 		case ARD2990_TEMP_F:
 			return(((tempK - 273.15) * 9.0)  / 5.0 + 32.0);
 	}
-	return(0);
+	return(0.0);
 }
 
 byte Ard2990::begin(byte j11State, byte chanAConfig, byte chanBConfig, byte chanCConfig, byte chanDConfig)
