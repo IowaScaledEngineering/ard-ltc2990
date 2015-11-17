@@ -303,24 +303,32 @@ long Ard2990::ltc2990ReadMicrovolts(byte channel)
 			return ARD_LTC2990_VOLTAGE_ERR;
 	}
 
-	uint16_t rawRead = ltc2990ReadRaw(channel) & 0x7FFF;
+	long rawRead = ltc2990ReadRaw(channel) & 0x7FFF;
 	switch(chanConfig)
 	{
 		case ARD2990_LTC2990_SINGLE_ENDED:
 			if (rawRead & 0x4000)
-				rawRead = ~rawRead + 1;
-			return (((long)rawRead * 30518L) / 100L);
+			{
+				rawRead ^= 0x7FFF;
+				rawRead += 1;
+				rawRead = -rawRead;			
+			}
+			return ((rawRead * 30518L) / 100L);
 			
 		case ARD2990_LTC2990_DIFFERENTIAL:
 			if (rawRead & 0x4000)
-				rawRead = ~rawRead + 1;
-			return (((long)rawRead * 1942L) / 100L);
+			{
+				rawRead ^= 0x7FFF;
+				rawRead += 1;
+				rawRead = -rawRead;			
+			}
+			return ((rawRead * 1942L) / 100L);
 
 		case 0:
 			// 0 means it's an internal voltage, so we have to add 2.5V to it
 			// Also, the sign bit is meaningless
 			rawRead &= 0x3FFF;
-			return 2500000L + (((long)rawRead * 30518L) / 100L);
+			return 2500000L + ((rawRead * 30518L) / 100L);
 
 		default:
 			return ARD_LTC2990_VOLTAGE_ERR;
