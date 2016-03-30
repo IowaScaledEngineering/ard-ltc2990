@@ -104,8 +104,8 @@ T 49800 47000 5 10 1 1 0 4 1
 device=LTC2990
 T 50700 48050 5 10 1 1 0 6 1
 refdes=U2
-T 48700 45700 5 10 1 1 0 0 1
-footprint=MSOP10
+T 49700 45900 5 10 1 1 0 8 1
+footprint=LTC_MS10
 }
 C 49500 49400 1 90 1 capacitor-1.sym
 {
@@ -205,8 +205,8 @@ T 49800 52100 5 10 1 1 0 4 1
 device=LTC2990
 T 50700 53150 5 10 1 1 0 6 1
 refdes=U1
-T 50300 50900 5 10 1 1 0 0 1
-footprint=MSOP10
+T 49700 51000 5 10 1 1 0 8 1
+footprint=LTC_MS10
 }
 C 49500 54500 1 90 1 capacitor-1.sym
 {
