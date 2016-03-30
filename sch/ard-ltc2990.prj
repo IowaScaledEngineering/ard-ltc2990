@@ -1,6 +1,4 @@
 schematics ard-ltc2990.sch
 output-name ../pcb/ard-ltc2990
 skip-m4
-elements-dir ../../footprints
-
-
+elements-dir ../../../footprints
